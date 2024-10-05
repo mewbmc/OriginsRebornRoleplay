@@ -38,7 +38,7 @@ public class OriginsRebornRoleplay extends JavaPlugin implements Listener {
         registerCommands();
 
 
-        // PlaceholderAPI integration
+        // PlaceholderAPI (idk dude it just works idk)
         if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new PAPIIntegration(this).register();
         }

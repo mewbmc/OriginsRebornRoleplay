@@ -67,7 +67,7 @@ public class EditCharacterCommand implements CommandExecutor, TabCompleter {
             currentValue = "";
         }
 
-        // Create and open the AnvilGUI with updated builder pattern
+        //the AnvilGUI builder thingy
         new AnvilGUI.Builder()
                 .onClose(stateSnapshot -> {
                     // Handle close event if needed

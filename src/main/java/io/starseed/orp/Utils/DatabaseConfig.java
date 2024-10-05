@@ -10,6 +10,7 @@ import javax.sql.DataSource;
 public class DatabaseConfig {
 private static HikariDataSource dataSource;
 
+// is there a better way to do this? I'm sure. can I be asked? no not at all.
 public static void initialize(JavaPlugin plugin) {
         FileConfiguration config = plugin.getConfig();
         HikariConfig hikariConfig = new HikariConfig();

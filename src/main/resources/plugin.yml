@@ -2,7 +2,7 @@ name: OriginsRebornRoleplay
 main: io.starseed.orp.OriginsRebornRoleplay
 version: 1.0
 api-version: 1.21
-author: YourName
+author: Starseed
 description: A roleplay plugin for managing player characters and integrating with Discord and PlaceholderAPI.
 
 commands:

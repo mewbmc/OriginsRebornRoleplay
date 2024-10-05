@@ -52,7 +52,7 @@ public class NewCharacterCommand implements CommandExecutor {
             return true;
         }
 
-        // Create character asynchronously
+        // Create character async
         CompletableFuture.runAsync(() -> {
             try {
                 createCharacter(player, characterName);
