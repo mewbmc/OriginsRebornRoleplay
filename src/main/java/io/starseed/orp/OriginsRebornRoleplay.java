@@ -71,8 +71,17 @@ public class OriginsRebornRoleplay extends JavaPlugin implements Listener {
                     UNIQUE (player_uuid, character_name)
                 )
                 """;
-        String characterFieldsSQL = """
-    CREATE TABLE IF NOT EXISTS character_fields (
+        String characterShortFieldsSQL = """
+    CREATE TABLE IF NOT EXISTS character_short_fields (
+        character_id INT,
+        field_name VARCHAR(32) NOT NULL,
+        field_value VARCHAR(255),
+        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+        PRIMARY KEY (character_id, field_name)
+    )
+    """;
+        String characterLongFieldsSQL = """
+    CREATE TABLE IF NOT EXISTS character_long_fields (
         character_id INT,
         field_name VARCHAR(32) NOT NULL,
         field_value TEXT,
@@ -85,7 +94,11 @@ public class OriginsRebornRoleplay extends JavaPlugin implements Listener {
             stmt.execute();
         }
 
-        try (PreparedStatement stmt = connection.prepareStatement(characterFieldsSQL)) {
+        try (PreparedStatement stmt = connection.prepareStatement(characterShortFieldsSQL)) {
+            stmt.execute();
+        }
+
+        try (PreparedStatement stmt = connection.prepareStatement(characterLongFieldsSQL)) {
             stmt.execute();
         }
     }
@@ -120,8 +133,8 @@ public class OriginsRebornRoleplay extends JavaPlugin implements Listener {
     public CompletableFuture<Void> loadPlayerCharacters(Player player) {
         return CompletableFuture.runAsync(() -> {
             try (Connection connection = DatabaseConfig.getDataSource().getConnection()) {
-                String sql = "SELECT c.*, cf.field_name, cf.field_value FROM characters c " +
-                        "LEFT JOIN character_fields cf ON c.id = cf.character_id " +
+                String sql = "SELECT c.*, sf.field_name AS short_field_name, sf.field_value AS short_field_value, lf.field_name AS long_field_name, lf.field_value AS long_field_value FROM characters c " +
+                        "LEFT JOIN character_short_fields sf ON c.id = sf.character_id LEFT JOIN character_long_fields lf ON c.id = lf.character_id " +
                         "WHERE c.player_uuid = ?";
 
                 try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -140,10 +153,16 @@ public class OriginsRebornRoleplay extends JavaPlugin implements Listener {
                                     }
                                 });
 
-                        String fieldName = rs.getString("field_name");
-                        String fieldValue = rs.getString("field_value");
-                        if (fieldName != null) {
-                            character.setField(fieldName, fieldValue);
+                        String shortFieldName = rs.getString("short_field_name");
+                        String shortFieldValue = rs.getString("short_field_value");
+                        if (shortFieldName != null) {
+                            character.setShortField(shortFieldName, shortFieldValue);
+                        }
+
+                        String longFieldName = rs.getString("long_field_name");
+                        String longFieldValue = rs.getString("long_field_value");
+                        if (longFieldName != null) {
+                            character.setLongField(longFieldName, longFieldValue);
                         }
                     }
 
@@ -189,35 +208,47 @@ public class OriginsRebornRoleplay extends JavaPlugin implements Listener {
     }
     private void updateCharacter(Connection connection, UUID playerUUID, Character character) throws SQLException {
         String updateCharacterSQL = "UPDATE characters SET last_updated = CURRENT_TIMESTAMP WHERE id = ?";
-        String updateFieldSQL = "INSERT INTO character_fields (character_id, field_name, field_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE field_value = VALUES(field_value)";
+        String updateShortFieldSQL = "INSERT INTO character_short_fields (character_id, field_name, field_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE field_value = VALUES(field_value)";
+        String updateLongFieldSQL = "INSERT INTO character_long_fields (character_id, field_name, field_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE field_value = VALUES(field_value)";
 
         try (PreparedStatement characterStmt = connection.prepareStatement(updateCharacterSQL);
-              PreparedStatement fieldStmt = connection.prepareStatement(updateFieldSQL)) {
+             PreparedStatement shortFieldStmt = connection.prepareStatement(updateShortFieldSQL);
+             PreparedStatement longFieldStmt = connection.prepareStatement(updateLongFieldSQL)) {
             // Update the character name
             characterStmt.setInt(1, character.getId());
             characterStmt.executeUpdate();
 
             // Update character fields
-            for (Map.Entry<String, String> field : character.getFields().entrySet()) {
-                fieldStmt.setInt(1, character.getId());
-                fieldStmt.setString(2, field.getKey());
-                fieldStmt.setString(3, field.getValue());
-                fieldStmt.addBatch();
+            for (Map.Entry<String, String> entry : character.getShortFields().entrySet()) {
+                shortFieldStmt.setInt(1, character.getId());
+                shortFieldStmt.setString(2, entry.getKey());
+                shortFieldStmt.setString(3, entry.getValue());
+                shortFieldStmt.addBatch();
             }
-            fieldStmt.executeBatch();
+            shortFieldStmt.executeBatch();
+
+            for (Map.Entry<String, String> entry : character.getLongFields().entrySet()) {
+                longFieldStmt.setInt(1, character.getId());
+                longFieldStmt.setString(2, entry.getKey());
+                longFieldStmt.setString(3, entry.getValue());
+                longFieldStmt.addBatch();
+            }
+            longFieldStmt.executeBatch();
+
+            if (discordWebhook != null) {
+                updateDiscordLore(character);
+            }
+
+            character.setDirty(false);
         } catch (SQLException e) {
             throw e;
-        }
-
-        if (discordWebhook != null) {
-            updateDiscordLore(character);
         }
     }
     private void updateDiscordLore(io.starseed.orp.Utils.Character character) {
         StringBuilder message = new StringBuilder();
         message.append("**Character Update: ").append(character.getName()).append("**\n\n");
 
-        for (Map.Entry<String, String> field : character.getFields().entrySet()) {
+        for (Map.Entry<String, String> field : character.getAllFields().entrySet()) {
             message.append("**").append(field.getKey()).append("**: ")
                     .append(field.getValue()).append("\n");
         }

@@ -77,7 +77,17 @@ public class NewCharacterCommand implements CommandExecutor {
             if (rs.next()) {
                 int characterId = rs.getInt(1);
                 Character character = new Character(characterId, characterName);
+
+                // Set default fields
+                character.setShortField("age", "Unknown");
+                character.setShortField("gender", "Unknown");
+                character.setShortField("race", "Unknown");
+                character.setShortField("occupation", "Unknown");
+                character.setLongField("description", "No description available.");
+                character.setLongField("backstory", "No backstory available.");
+
                 plugin.getPlayerCharacters(player.getUniqueId()).put(characterName, character);
+                character.save(plugin.getConnection());
             }
         }
     }

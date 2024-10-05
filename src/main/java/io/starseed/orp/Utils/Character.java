@@ -1,12 +1,10 @@
-// src/main/java/io/starseed/orp/Utils/Character.java
 package io.starseed.orp.Utils;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class Character {
@@ -15,6 +13,8 @@ public class Character {
     private Map<String, String> shortFields;
     private Map<String, String> longFields;
     private boolean dirty;
+    
+    private static final int SHORT_FIELD_MAX_LENGTH = 255;
 
     public Character(int id, String name) {
         this.id = id;
@@ -40,6 +40,9 @@ public class Character {
     }
 
     public void setShortField(String fieldName, String value) {
+        if (value.length() > SHORT_FIELD_MAX_LENGTH) {
+            throw new IllegalArgumentException("Short field value exceeds maximum length of " + SHORT_FIELD_MAX_LENGTH);
+        }
         shortFields.put(fieldName, value);
         this.dirty = true;
     }
@@ -49,7 +52,7 @@ public class Character {
     }
 
     public Map<String, String> getShortFields() {
-        return shortFields;
+        return Collections.unmodifiableMap(shortFields);
     }
 
     public void setLongField(String fieldName, String value) {
@@ -62,21 +65,21 @@ public class Character {
     }
 
     public Map<String, String> getLongFields() {
-        return longFields;
+        return Collections.unmodifiableMap(longFields);
     }
 
     public void setField(String fieldName, String value) {
-        if (shortFields.containsKey(fieldName)) {
+        if (value.length() <= SHORT_FIELD_MAX_LENGTH) {
             setShortField(fieldName, value);
         } else {
             setLongField(fieldName, value);
         }
     }
 
-    public Map<String, String> getFields() {
+    public Map<String, String> getAllFields() {
         Map<String, String> allFields = new HashMap<>(shortFields);
         allFields.putAll(longFields);
-        return allFields;
+        return Collections.unmodifiableMap(allFields);
     }
 
     public boolean isDirty() {
@@ -90,31 +93,33 @@ public class Character {
     public CompletableFuture<Void> save(Connection connection) {
         return CompletableFuture.runAsync(() -> {
             String updateCharacterSQL = "UPDATE characters SET character_name = ? WHERE id = ?";
-            String updateFieldSQL = "INSERT INTO character_fields (character_id, field_name, field_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE field_value = VALUES(field_value)";
+            String updateShortFieldSQL = "INSERT INTO character_short_fields (character_id, field_name, field_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE field_value = VALUES(field_value)";
+            String updateLongFieldSQL = "INSERT INTO character_long_fields (character_id, field_name, field_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE field_value = VALUES(field_value)";
 
-            try (PreparedStatement characterStmt = connection.prepareStatement(updateCharacterSQL, PreparedStatement.RETURN_GENERATED_KEYS);
-                 PreparedStatement fieldStmt = connection.prepareStatement(updateFieldSQL)) {
+            try (PreparedStatement characterStmt = connection.prepareStatement(updateCharacterSQL);
+                 PreparedStatement shortFieldStmt = connection.prepareStatement(updateShortFieldSQL);
+                 PreparedStatement longFieldStmt = connection.prepareStatement(updateLongFieldSQL)) {
                 // Update the character name
                 characterStmt.setString(1, name);
                 characterStmt.setInt(2, id);
                 characterStmt.executeUpdate();
 
-                try (ResultSet generatedKeys = characterStmt.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        this.id = generatedKeys.getInt(1);
-                    } else {
-                        throw new SQLException("Failed to get generated key for character.");
-                    }
-                }
-
                 // Update character fields
-                for (Map.Entry<String, String> entry : getFields().entrySet()) {
-                    fieldStmt.setInt(1, id);
-                    fieldStmt.setString(2, entry.getKey());
-                    fieldStmt.setString(3, entry.getValue());
-                    fieldStmt.addBatch();
+                for (Map.Entry<String, String> entry : shortFields.entrySet()) {
+                    shortFieldStmt.setInt(1, id);
+                    shortFieldStmt.setString(2, entry.getKey());
+                    shortFieldStmt.setString(3, entry.getValue());
+                    shortFieldStmt.addBatch();
                 }
-                fieldStmt.executeBatch();
+                shortFieldStmt.executeBatch();
+
+                for (Map.Entry<String, String> entry : longFields.entrySet()) {
+                    longFieldStmt.setInt(1, id);
+                    longFieldStmt.setString(2, entry.getKey());
+                    longFieldStmt.setString(3, entry.getValue());
+                    longFieldStmt.addBatch();
+                }
+                longFieldStmt.executeBatch();
 
                 dirty = false;
             } catch (SQLException e) {
