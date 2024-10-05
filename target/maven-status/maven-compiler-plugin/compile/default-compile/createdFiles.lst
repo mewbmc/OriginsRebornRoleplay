@@ -1,0 +1,13 @@
+io\starseed\orp\Utils\Character.class
+io\starseed\orp\Commands\CharacterCommand.class
+io\starseed\orp\Commands\CharactersCommand.class
+io\starseed\orp\Commands\ProfileCommand.class
+io\starseed\orp\OriginsRebornRoleplay.class
+io\starseed\orp\Utils\BookGUI$BookCompleteHandler.class
+io\starseed\orp\Utils\DatabaseConfig.class
+io\starseed\orp\Commands\NewCharacterCommand.class
+io\starseed\orp\Utils\DiscordWebhook.class
+io\starseed\orp\Utils\BookGUI.class
+io\starseed\orp\Commands\EditCharacterCommand.class
+io\starseed\orp\Commands\DeleteCharacterCommand.class
+io\starseed\orp\Utils\PAPIIntegration.class

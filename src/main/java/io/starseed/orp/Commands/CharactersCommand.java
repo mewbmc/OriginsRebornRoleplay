@@ -1,4 +1,4 @@
-package io.starseed.orp.commands;
+package io.starseed.orp.Commands;
 
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -10,14 +10,11 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.Material;
 import io.starseed.orp.OriginsRebornRoleplay;
-import io.starseed.orp.Character;
+import io.starseed.orp.Utils.Character;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 public class CharactersCommand implements CommandExecutor {
     private final OriginsRebornRoleplay plugin;
